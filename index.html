@@ -2,131 +2,126 @@
 <html lang="sr">
 <head>
     <meta charset="UTF-8">
-    <title>Mamba Ultra | Low-Level Code Gen</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mamba Ultra - Live Intelligence Engine</title>
     <style>
-        :root { --neon-blue: #00d4ff; --neon-purple: #9d00ff; --bg: #020205; }
-        body { background: var(--bg); color: white; font-family: 'Consolas', monospace; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        :root { --neon: #00d4ff; --dark: #05050a; --glass: rgba(255, 255, 255, 0.05); }
+        body { margin: 0; background: var(--dark); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        header { 
-            background: rgba(255,255,255,0.02); 
-            backdrop-filter: blur(20px); 
-            padding: 25px; 
-            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-            text-align: center;
+        header { background: var(--glass); backdrop-filter: blur(15px); padding: 15px 30px; border-bottom: 1px solid rgba(0, 212, 255, 0.2); display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--neon); text-shadow: 0 0 10px var(--neon); }
+
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+
+        /* INPUT AREA */
+        .editor-side { flex: 1; display: flex; flex-direction: column; border-right: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0,0,0,0.3); }
+        .label { padding: 10px; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        textarea { flex: 1; background: transparent; border: none; color: #00ff88; padding: 20px; font-size: 1.2rem; outline: none; resize: none; line-height: 1.6; }
+
+        /* PREVIEW AREA */
+        .preview-side { flex: 1; display: flex; flex-direction: column; background: #fff; position: relative; }
+        iframe { flex: 1; border: none; background: white; }
+
+        /* CODE OVERLAY (Glassmorphism) */
+        #generated-code-view { 
+            position: absolute; bottom: 0; width: 100%; height: 30%; 
+            background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px);
+            border-top: 1px solid var(--neon); color: #00ff88; 
+            padding: 15px; font-family: monospace; font-size: 0.8rem; overflow-y: auto;
         }
 
-        .container { display: flex; flex: 1; padding: 20px; gap: 20px; overflow: hidden; }
-
-        /* Input Section */
-        #input-zone { 
-            flex: 1; 
-            background: rgba(255,255,255,0.03); 
-            border-radius: 15px; 
-            border: 1px solid var(--neon-blue);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Output Section (Generated Code) */
-        #output-zone { 
-            flex: 1; 
-            background: #000; 
-            border-radius: 15px; 
-            border: 1px solid var(--neon-purple);
-            padding: 20px;
-            overflow-y: auto;
-            position: relative;
-        }
-
-        textarea { 
-            flex: 1; background: transparent; border: none; color: #fff; font-size: 1.1rem; outline: none; resize: none;
-        }
-
-        .btn-mamba {
-            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
-            color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer;
-            margin-top: 15px; text-transform: uppercase; letter-spacing: 2px;
-        }
-
-        .code-header { color: var(--neon-purple); margin-bottom: 10px; font-size: 0.8rem; }
-        pre { color: #00ff88; margin: 0; white-space: pre-wrap; font-size: 1rem; }
-        
-        .status-bar { padding: 10px 25px; font-size: 0.8rem; background: rgba(0,0,0,0.5); color: #555; }
+        .btn-install { background: var(--neon); color: black; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 style="margin:0;">🐍 MAMBA <span style="color:var(--neon-blue)">ULTRA</span> COMPILER</h1>
+    <div class="logo">MAMBA ULTRA ENGINE v2.0</div>
+    <button class="btn-install">INSTALIRAJ PWA</button>
 </header>
 
-<div class="container">
-    <div id="input-zone">
-        <h3 style="color:var(--neon-blue)">PIŠI NA SRPSKOM:</h3>
-        <textarea id="userInput" placeholder="Npr: Napravi prozor koji se stalno osvežava i koristi 100% procesora..."></textarea>
-        <button class="btn-mamba" onclick="generateEngineCode()">GENERISI MAMBA KOD</button>
+<div class="workspace">
+    <div class="editor-side">
+        <div class="label">Tvoj Prompt (Piši slobodno):</div>
+        <textarea id="mambaPrompt" oninput="mambaCoreEngine()" placeholder="Npr: Napravi plavi kvadrat koji se vrti i dugme koje ga brise..."></textarea>
     </div>
 
-    <div id="output-zone">
-        <div class="code-header">// GENERISAN HIGH-PERFORMANCE KOD (READY TO BUILD)</div>
-        <pre id="codeOutput">// Ovde će se pojaviti sirovi kod...</pre>
+    <div class="preview-side">
+        <div class="label" style="background: #eee; color: #333; position:absolute; top:0; width:100%; z-index:5;">Live Preview Aplikacije:</div>
+        <iframe id="appPreview"></iframe>
+        <div id="generated-code-view">// Ovde se generiše Mamba Low-Level kod...</div>
     </div>
 </div>
 
-<div class="status-bar" id="status">Sistem spreman. Čekam instrukcije...</div>
-
 <script>
-    function generateEngineCode() {
-        const input = document.getElementById('userInput').value.toLowerCase();
-        const output = document.getElementById('codeOutput');
-        const status = document.getElementById('status');
+    function mambaCoreEngine() {
+        const input = document.getElementById('mambaPrompt').value.toLowerCase();
+        const preview = document.getElementById('appPreview');
+        const codeView = document.getElementById('generated-code-view');
+
+        // PAMETNA LOGIKA PREPOZNAVANJA (The Intelligence)
+        let elements = "";
+        let styles = "";
+        let scripts = "";
+
+        // Boje
+        let color = "red";
+        if(input.includes("plav")) color = "blue";
+        if(input.includes("zelen")) color = "green";
+        if(input.includes("zuti")) color = "yellow";
+        if(input.includes("crn")) color = "black";
+
+        // Objekti
+        if(input.includes("kvadrat") || input.includes("kocka")) {
+            elements += `<div id="obj" class="mamba-obj"></div>`;
+            styles += `#obj { width: 100px; height: 100px; background: ${color}; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: 0.5s; }`;
+        }
         
-        status.innerText = "Analiziram prompt... Generišem ultra-brze instrukcije...";
-        
-        let generatedCode = "";
-
-        // CORE MAMBA LOGIKA: Pretvaranje "želje" u "sirovi kod"
-        if (input.includes("prozor") || input.includes("os") || input.includes("operativni")) {
-            generatedCode = `
-#include <mamba_core.h>
-#include <iostream>
-
-// Mamba Ultra - Low Level Window Engine
-int main() {
-    MambaWindow win("Mamba OS", 1920, 1080);
-    win.set_priority(REALTIME_PRIORITY);
-    
-    while(win.is_active()) {
-        win.clear(0x000000);
-        win.render_frame();
-        // Brzina izvršavanja: < 1ns
-    }
-    return 0;
-}`;
-        } else if (input.includes("kalkulator") || input.includes("matematika")) {
-            generatedCode = `
-// Mamba Ultra Fast Math Engine
-inline float ultra_add(float a, float b) {
-    asm ("addss %1, %0" : "+x" (a) : "x" (b));
-    return a;
-}
-
-int main() {
-    std::cout << "Rezultat: " << ultra_add(5.5, 10.5);
-    return 0;
-}`;
-        } else {
-            generatedCode = `
-// Greška: Mamba Engine još uvek uči ovaj tip komande.
-// Pokušaj sa: "Napravi prozor" ili "Matematički engine".
-            `;
+        if(input.includes("krug")) {
+            elements += `<div id="obj" class="mamba-obj"></div>`;
+            styles += `#obj { width: 100px; height: 100px; background: ${color}; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }`;
         }
 
-        setTimeout(() => {
-            output.innerText = generatedCode;
-            status.innerText = "KOD GENERISAN. Spreman za kompajliranje u .EXE";
-        }, 800);
+        // Akcije / Animacije
+        if(input.includes("vrti")) {
+            styles += ` @keyframes spin { from {transform: translate(-50%, -50%) rotate(0deg);} to {transform: translate(-50%, -50%) rotate(360deg);} } `;
+            styles += ` #obj { animation: spin 2s linear infinite; } `;
+        }
+
+        if(input.includes("prati mis")) {
+            scripts += ` document.onmousemove = (e) => { const o = document.getElementById('obj'); o.style.left = e.pageX + 'px'; o.style.top = e.pageY + 'px'; }; `;
+        }
+
+        // Interakcija (Dugme)
+        if(input.includes("dugme")) {
+            elements += `<button id="btn" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:10px 20px;">IZVRŠI AKCIJU</button>`;
+            if(input.includes("brise")) {
+                scripts += ` document.getElementById('btn').onclick = () => { document.getElementById('obj').remove(); }; `;
+            }
+        }
+
+        // TEXT / NASLOVI
+        if(input.includes("naslov")) {
+            let matches = input.match(/'([^']+)'/);
+            let tekst = matches ? matches[1] : "Mamba App";
+            elements += `<h1>${tekst}</h1>`;
+        }
+
+        // SPAJANJE U FINALNI KOD
+        const finalHTML = `
+            <html>
+            <head><style>${styles}</style></head>
+            <body>
+                ${elements}
+                <script>${scripts}<\/script>
+            </body>
+            </html>
+        `;
+
+        // UPDATE PREVIEW I KOD VIEW
+        const blob = new Blob([finalHTML], {type: 'text/html'});
+        preview.src = URL.createObjectURL(blob);
+        codeView.innerText = "// GENERISAN MAMBA CORE KOD:\n" + (styles + scripts || "// Čekam komande...");
     }
 </script>
 
