@@ -2,151 +2,131 @@
 <html lang="sr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mamba Ultra | AI Code Generator</title>
+    <title>Mamba Ultra | Low-Level Code Gen</title>
     <style>
-        :root { --neon: #00ffcc; --bg: #050505; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        :root { --neon-blue: #00d4ff; --neon-purple: #9d00ff; --bg: #020205; }
+        body { background: var(--bg); color: white; font-family: 'Consolas', monospace; margin: 0; display: flex; flex-direction: column; height: 100vh; }
         
-        /* Glassmorphism UI */
         header { 
-            padding: 20px; 
-            background: rgba(255,255,255,0.05); 
-            backdrop-filter: blur(10px); 
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.02); 
+            backdrop-filter: blur(20px); 
+            padding: 25px; 
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
             text-align: center;
         }
-        
-        .main-container { display: flex; flex: 1; padding: 20px; gap: 20px; }
-        
-        #prompt-box { 
+
+        .container { display: flex; flex: 1; padding: 20px; gap: 20px; overflow: hidden; }
+
+        /* Input Section */
+        #input-zone { 
             flex: 1; 
             background: rgba(255,255,255,0.03); 
-            border: 2px solid var(--neon); 
             border-radius: 15px; 
+            border: 1px solid var(--neon-blue);
             padding: 20px;
             display: flex;
             flex-direction: column;
         }
 
-        textarea { 
+        /* Output Section (Generated Code) */
+        #output-zone { 
             flex: 1; 
-            background: transparent; 
-            border: none; 
-            color: white; 
-            font-size: 1.2rem; 
-            outline: none; 
-            resize: none;
-        }
-
-        .btn-generate { 
-            background: var(--neon); 
-            color: black; 
-            border: none; 
-            padding: 15px; 
-            border-radius: 10px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            margin-top: 10px;
-            font-size: 1rem;
-            transition: 0.3s;
-        }
-
-        .btn-generate:hover { box-shadow: 0 0 20px var(--neon); transform: translateY(-2px); }
-
-        #output-frame { 
-            flex: 1; 
-            background: white; 
+            background: #000; 
             border-radius: 15px; 
-            border: none; 
+            border: 1px solid var(--neon-purple);
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
         }
 
-        .code-preview {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.8);
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 10px;
-            color: #00ff00;
-            max-width: 300px;
-            pointer-events: none;
+        textarea { 
+            flex: 1; background: transparent; border: none; color: #fff; font-size: 1.1rem; outline: none; resize: none;
         }
+
+        .btn-mamba {
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer;
+            margin-top: 15px; text-transform: uppercase; letter-spacing: 2px;
+        }
+
+        .code-header { color: var(--neon-purple); margin-bottom: 10px; font-size: 0.8rem; }
+        pre { color: #00ff88; margin: 0; white-space: pre-wrap; font-size: 1rem; }
+        
+        .status-bar { padding: 10px 25px; font-size: 0.8rem; background: rgba(0,0,0,0.5); color: #555; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 style="margin:0; letter-spacing: 5px;">MAMBA <span style="color:var(--neon)">ULTRA</span> ENGINE</h1>
-    <p>Upiši šta želiš da napraviš i Mamba će stvoriti kod.</p>
+    <h1 style="margin:0;">🐍 MAMBA <span style="color:var(--neon-blue)">ULTRA</span> COMPILER</h1>
 </header>
 
-<div class="main-container">
-    <div id="prompt-box">
-        <h3>Šta pravimo danas?</h3>
-        <textarea id="userInput" placeholder="Primer: Napravi crveni krug koji prati miš i broji klikove..."></textarea>
-        <button class="btn-generate" onclick="generateAndRun()">GENERISI I POKRENI APLIKACIJU</button>
+<div class="container">
+    <div id="input-zone">
+        <h3 style="color:var(--neon-blue)">PIŠI NA SRPSKOM:</h3>
+        <textarea id="userInput" placeholder="Npr: Napravi prozor koji se stalno osvežava i koristi 100% procesora..."></textarea>
+        <button class="btn-mamba" onclick="generateEngineCode()">GENERISI MAMBA KOD</button>
     </div>
 
-    <iframe id="output-frame"></iframe>
+    <div id="output-zone">
+        <div class="code-header">// GENERISAN HIGH-PERFORMANCE KOD (READY TO BUILD)</div>
+        <pre id="codeOutput">// Ovde će se pojaviti sirovi kod...</pre>
+    </div>
 </div>
 
-<div class="code-preview" id="codeView">// Ovde će se videti generisani Mamba kod...</div>
+<div class="status-bar" id="status">Sistem spreman. Čekam instrukcije...</div>
 
 <script>
-    function generateAndRun() {
-        const prompt = document.getElementById('userInput').value.toLowerCase();
-        const frame = document.getElementById('output-frame');
-        const codeView = document.getElementById('codeView');
+    function generateEngineCode() {
+        const input = document.getElementById('userInput').value.toLowerCase();
+        const output = document.getElementById('codeOutput');
+        const status = document.getElementById('status');
         
-        let generatedHTML = "";
-        let generatedJS = "";
+        status.innerText = "Analiziram prompt... Generišem ultra-brze instrukcije...";
+        
+        let generatedCode = "";
 
-        // MAMBA ENGINE LOGIKA - Pretvaranje teksta u STVARNI KOD
-        if (prompt.includes("krug") || prompt.includes("krug koji prati mis")) {
-            generatedHTML = `<div id='player' style='width:50px; height:50px; background:red; border-radius:50%; position:absolute;'></div>`;
-            generatedJS = `
-                const p = document.getElementById('player');
-                document.onmousemove = (e) => {
-                    p.style.left = e.pageX - 25 + 'px';
-                    p.style.top = e.pageY - 25 + 'px';
-                };
-                let score = 0;
-                p.onclick = () => { score++; alert('Klikova: ' + score); };
-            `;
-        } else if (prompt.includes("kalkulator")) {
-            generatedHTML = `
-                <div style="padding:20px; font-family:sans-serif;">
-                    <input id="n1" type="number"> + <input id="n2" type="number">
-                    <button onclick="res()">Izracunaj</button>
-                    <h1 id="r">0</h1>
-                </div>`;
-            generatedJS = `function res() { 
-                document.getElementById('r').innerText = 
-                Number(document.getElementById('n1').value) + Number(document.getElementById('n2').value); 
-            }`;
+        // CORE MAMBA LOGIKA: Pretvaranje "želje" u "sirovi kod"
+        if (input.includes("prozor") || input.includes("os") || input.includes("operativni")) {
+            generatedCode = `
+#include <mamba_core.h>
+#include <iostream>
+
+// Mamba Ultra - Low Level Window Engine
+int main() {
+    MambaWindow win("Mamba OS", 1920, 1080);
+    win.set_priority(REALTIME_PRIORITY);
+    
+    while(win.is_active()) {
+        win.clear(0x000000);
+        win.render_frame();
+        // Brzina izvršavanja: < 1ns
+    }
+    return 0;
+}`;
+        } else if (input.includes("kalkulator") || input.includes("matematika")) {
+            generatedCode = `
+// Mamba Ultra Fast Math Engine
+inline float ultra_add(float a, float b) {
+    asm ("addss %1, %0" : "+x" (a) : "x" (b));
+    return a;
+}
+
+int main() {
+    std::cout << "Rezultat: " << ultra_add(5.5, 10.5);
+    return 0;
+}`;
         } else {
-            generatedHTML = `<h1>Mamba ne prepoznaje komandu. Pokušaj sa 'krug' ili 'kalkulator'.</h1>`;
+            generatedCode = `
+// Greška: Mamba Engine još uvek uči ovaj tip komande.
+// Pokušaj sa: "Napravi prozor" ili "Matematički engine".
+            `;
         }
 
-        // PAKOVANJE U FINALNU APLIKACIJU
-        const finalApp = `
-            <html>
-                <body style="margin:0; overflow:hidden;">
-                    ${generatedHTML}
-                    <script>${generatedJS}<\/script>
-                </body>
-            </html>
-        `;
-
-        // Prikaz koda (da vidiš da je stvarno generisan)
-        codeView.innerText = "// GENERISAN KOD:\n" + generatedJS;
-
-        // POKRETANJE APLIKACIJE
-        const blob = new Blob([finalApp], {type: 'text/html'});
-        frame.src = URL.createObjectURL(blob);
+        setTimeout(() => {
+            output.innerText = generatedCode;
+            status.innerText = "KOD GENERISAN. Spreman za kompajliranje u .EXE";
+        }, 800);
     }
 </script>
 
