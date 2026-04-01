@@ -2,127 +2,166 @@
 <html lang="sr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mamba Ultra - Live Intelligence Engine</title>
+    <title>Mamba Ultra | 3D & App Engine</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        :root { --neon: #00d4ff; --dark: #05050a; --glass: rgba(255, 255, 255, 0.05); }
-        body { margin: 0; background: var(--dark); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        :root { --neon: #00d4ff; --pink: #ff007f; --bg: #05050a; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        header { background: var(--glass); backdrop-filter: blur(15px); padding: 15px 30px; border-bottom: 1px solid rgba(0, 212, 255, 0.2); display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 1.5rem; font-weight: bold; color: var(--neon); text-shadow: 0 0 10px var(--neon); }
-
-        .workspace { display: flex; flex: 1; overflow: hidden; }
-
-        /* INPUT AREA */
-        .editor-side { flex: 1; display: flex; flex-direction: column; border-right: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0,0,0,0.3); }
-        .label { padding: 10px; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        textarea { flex: 1; background: transparent; border: none; color: #00ff88; padding: 20px; font-size: 1.2rem; outline: none; resize: none; line-height: 1.6; }
-
-        /* PREVIEW AREA */
-        .preview-side { flex: 1; display: flex; flex-direction: column; background: #fff; position: relative; }
-        iframe { flex: 1; border: none; background: white; }
-
-        /* CODE OVERLAY (Glassmorphism) */
-        #generated-code-view { 
-            position: absolute; bottom: 0; width: 100%; height: 30%; 
-            background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px);
-            border-top: 1px solid var(--neon); color: #00ff88; 
-            padding: 15px; font-family: monospace; font-size: 0.8rem; overflow-y: auto;
+        header { 
+            background: rgba(255,255,255,0.03); backdrop-filter: blur(15px); 
+            padding: 15px; border-bottom: 1px solid var(--neon);
+            display: flex; justify-content: space-between; align-items: center;
         }
 
-        .btn-install { background: var(--neon); color: black; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .mode-selector { display: flex; gap: 10px; }
+        .mode-btn { 
+            background: transparent; border: 1px solid var(--neon); color: var(--neon); 
+            padding: 8px 15px; cursor: pointer; border-radius: 5px; font-weight: bold;
+        }
+        .mode-btn.active { background: var(--neon); color: black; }
+
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+        .editor-side { flex: 1; border-right: 1px solid #222; display: flex; flex-direction: column; }
+        textarea { flex: 1; background: #000; color: #00ff88; padding: 20px; font-size: 1.1rem; border: none; outline: none; resize: none; font-family: monospace; }
+
+        .preview-side { flex: 1.5; background: #eee; position: relative; display: flex; flex-direction: column; }
+        #render-target { flex: 1; background: #000; } /* Ovde ide 3D ili App */
+
+        .console { height: 150px; background: #111; border-top: 2px solid var(--pink); padding: 10px; font-family: monospace; font-size: 0.9rem; overflow-y: auto; color: #ff007f; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="logo">MAMBA ULTRA ENGINE v2.0</div>
-    <button class="btn-install">INSTALIRAJ PWA</button>
+    <div style="font-weight:bold; letter-spacing:3px;">MAMBA <span style="color:var(--neon)">ULTRA</span> ENGINE v3.0</div>
+    <div class="mode-selector">
+        <button class="mode-btn active" onclick="setMode('3d')">3D WORLD</button>
+        <button class="mode-btn" onclick="setMode('app')">APP FACTORY</button>
+    </div>
 </header>
 
 <div class="workspace">
     <div class="editor-side">
-        <div class="label">Tvoj Prompt (Piši slobodno):</div>
-        <textarea id="mambaPrompt" oninput="mambaCoreEngine()" placeholder="Npr: Napravi plavi kvadrat koji se vrti i dugme koje ga brise..."></textarea>
+        <textarea id="mambaInput" oninput="mambaEngine()" placeholder="3D: napravi crvenu kocku koja se vrti...
+APP: napravi login sistem sa bazom..."></textarea>
+        <div class="console" id="mambaConsole">> Mamba System Ready...</div>
     </div>
 
     <div class="preview-side">
-        <div class="label" style="background: #eee; color: #333; position:absolute; top:0; width:100%; z-index:5;">Live Preview Aplikacije:</div>
-        <iframe id="appPreview"></iframe>
-        <div id="generated-code-view">// Ovde se generiše Mamba Low-Level kod...</div>
+        <div id="render-target"></div>
     </div>
 </div>
 
 <script>
-    function mambaCoreEngine() {
-        const input = document.getElementById('mambaPrompt').value.toLowerCase();
-        const preview = document.getElementById('appPreview');
-        const codeView = document.getElementById('generated-code-view');
+    let currentMode = '3d';
+    const target = document.getElementById('render-target');
+    const consoleLog = document.getElementById('mambaConsole');
 
-        // PAMETNA LOGIKA PREPOZNAVANJA (The Intelligence)
-        let elements = "";
-        let styles = "";
-        let scripts = "";
-
-        // Boje
-        let color = "red";
-        if(input.includes("plav")) color = "blue";
-        if(input.includes("zelen")) color = "green";
-        if(input.includes("zuti")) color = "yellow";
-        if(input.includes("crn")) color = "black";
-
-        // Objekti
-        if(input.includes("kvadrat") || input.includes("kocka")) {
-            elements += `<div id="obj" class="mamba-obj"></div>`;
-            styles += `#obj { width: 100px; height: 100px; background: ${color}; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: 0.5s; }`;
-        }
-        
-        if(input.includes("krug")) {
-            elements += `<div id="obj" class="mamba-obj"></div>`;
-            styles += `#obj { width: 100px; height: 100px; background: ${color}; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }`;
-        }
-
-        // Akcije / Animacije
-        if(input.includes("vrti")) {
-            styles += ` @keyframes spin { from {transform: translate(-50%, -50%) rotate(0deg);} to {transform: translate(-50%, -50%) rotate(360deg);} } `;
-            styles += ` #obj { animation: spin 2s linear infinite; } `;
-        }
-
-        if(input.includes("prati mis")) {
-            scripts += ` document.onmousemove = (e) => { const o = document.getElementById('obj'); o.style.left = e.pageX + 'px'; o.style.top = e.pageY + 'px'; }; `;
-        }
-
-        // Interakcija (Dugme)
-        if(input.includes("dugme")) {
-            elements += `<button id="btn" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:10px 20px;">IZVRŠI AKCIJU</button>`;
-            if(input.includes("brise")) {
-                scripts += ` document.getElementById('btn').onclick = () => { document.getElementById('obj').remove(); }; `;
-            }
-        }
-
-        // TEXT / NASLOVI
-        if(input.includes("naslov")) {
-            let matches = input.match(/'([^']+)'/);
-            let tekst = matches ? matches[1] : "Mamba App";
-            elements += `<h1>${tekst}</h1>`;
-        }
-
-        // SPAJANJE U FINALNI KOD
-        const finalHTML = `
-            <html>
-            <head><style>${styles}</style></head>
-            <body>
-                ${elements}
-                <script>${scripts}<\/script>
-            </body>
-            </html>
-        `;
-
-        // UPDATE PREVIEW I KOD VIEW
-        const blob = new Blob([finalHTML], {type: 'text/html'});
-        preview.src = URL.createObjectURL(blob);
-        codeView.innerText = "// GENERISAN MAMBA CORE KOD:\n" + (styles + scripts || "// Čekam komande...");
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        mambaEngine();
     }
+
+    function log(msg) { consoleLog.innerHTML += `<div>> ${msg}</div>`; consoleLog.scrollTop = consoleLog.scrollHeight; }
+
+    function mambaEngine() {
+        const input = document.getElementById('mambaInput').value.toLowerCase();
+        target.innerHTML = ""; // Clear previous
+        
+        if (currentMode === '3d') {
+            run3DEngine(input);
+        } else {
+            runAppEngine(input);
+        }
+    }
+
+    // --- 3D ENGINE (THREE.JS) ---
+    function run3DEngine(input) {
+        if (!input.includes("napravi")) return;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, target.clientWidth / target.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(target.clientWidth, target.clientHeight);
+        target.appendChild(renderer.domElement);
+
+        let geometry, material, mesh;
+        let color = input.includes("plav") ? 0x00d4ff : (input.includes("zelen") ? 0x00ff88 : 0xff0000);
+
+        if (input.includes("kocku") || input.includes("kvadrat")) {
+            geometry = new THREE.BoxGeometry();
+        } else if (input.includes("loptu") || input.includes("krug")) {
+            geometry = new THREE.SphereGeometry(1, 32, 32);
+        }
+
+        material = new THREE.MeshBasicMaterial({ color: color, wireframe: input.includes("wireframe") });
+        mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+        camera.position.z = 5;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(input.includes("vrti")) {
+                mesh.rotation.x += 0.01;
+                mesh.rotation.y += 0.01;
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+        log("3D Objekt generisan sa ultra-brzim renderom.");
+    }
+
+    // --- APP ENGINE (DATABASE & UI) ---
+    function runAppAppEngine(input) {
+        let appHTML = `<div style="padding:40px; color:black; font-family:sans-serif;">`;
+        
+        if (input.includes("login") || input.includes("bazu")) {
+            appHTML += `
+                <h2>Mamba Secure Database Login</h2>
+                <input id="u" placeholder="Username" style="display:block; margin:10px 0; padding:10px;">
+                <input id="p" type="password" placeholder="Password" style="display:block; margin:10px 0; padding:10px;">
+                <button onclick="saveUser()" style="padding:10px; background:#00d4ff; border:none; cursor:pointer;">REGISTRUJ U BAZU</button>
+                <button onclick="checkUser()" style="padding:10px; background:#00ff88; border:none; cursor:pointer;">LOGUJ SE</button>
+                <div id="status"></div>
+                <script>
+                    function saveUser() {
+                        const u = document.getElementById('u').value;
+                        const p = document.getElementById('p').value;
+                        localStorage.setItem('mamba_user_' + u, p);
+                        alert('Korisnik ' + u + ' je sacuvan u Mamba LocalDB!');
+                    }
+                    function checkUser() {
+                        const u = document.getElementById('u').value;
+                        const p = document.getElementById('p').value;
+                        if(localStorage.getItem('mamba_user_' + u) === p) {
+                            document.getElementById('status').innerHTML = '<h3 style="color:green">USPESAN LOGIN! Dobrodosli u Mamba Sistem.</h3>';
+                        } else {
+                            alert('Greska: Korisnik ne postoji ili je lozinka pogresna.');
+                        }
+                    }
+                <\/script>
+            `;
+        } else if (input.includes("discord") || input.includes("chat")) {
+            appHTML += `<h3>Mamba Chat Mockup</h3><div style="background:#2f3136; color:white; padding:10px; height:200px; border-radius:10px;">Ovo je Discord Style UI...</div>`;
+        } else {
+            appHTML += `<h1>Napiši npr: 'Napravi login sa bazom'</h1>`;
+        }
+
+        appHTML += `</div>`;
+        target.innerHTML = appHTML;
+        
+        // Moramo ponovo pokrenuti skripte unutar targeta jer innerHTML ne pokreće <script> automatski
+        const scripts = target.getElementsByTagName('script');
+        for (let s of scripts) { eval(s.innerText); }
+        
+        log("Aplikacija sa bazom podataka je spremna.");
+    }
+    
+    // Malo popravljamo ime funkcije za poziv
+    window.runAppEngine = runAppAppEngine;
 </script>
 
 </body>
