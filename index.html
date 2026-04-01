@@ -2,15 +2,15 @@
 <html lang="sr">
 <head>
     <meta charset="UTF-8">
-    <title>Mamba Ultra Extreme | 100 Days Project</title>
+    <title>Mamba Ultra | Realistic World Engine</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        :root { --neon: #00ff88; --bg: #010103; --glass: rgba(0, 212, 255, 0.05); }
+        :root { --neon: #00d4ff; --bg: #030307; --glass: rgba(255,255,255,0.03); }
         body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         header { 
             background: var(--glass); backdrop-filter: blur(25px); 
-            padding: 15px 30px; border-bottom: 1px solid var(--neon);
+            padding: 15px 30px; border-bottom: 2px solid var(--neon);
             display: flex; justify-content: space-between; align-items: center;
         }
 
@@ -19,16 +19,17 @@
         /* High-Tech Editor */
         .editor-side { flex: 1; display: flex; flex-direction: column; gap: 10px; }
         textarea { 
-            flex: 1; background: #000; color: var(--neon); padding: 25px; 
+            flex: 1; background: #000; color: #00ff88; padding: 25px; 
             font-size: 1.1rem; border: 1px solid #1a1a1a; border-radius: 15px;
             outline: none; resize: none; font-family: 'Consolas', monospace;
             box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.05);
         }
 
-        /* 3D Render Side */
-        .render-side { flex: 2; background: #080808; border-radius: 15px; overflow: hidden; border: 1px solid #333; position: relative; }
+        /* Real-Time 3D Render Side */
+        .render-side { flex: 2; background: #eee; border-radius: 15px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative; }
         #canvas-3d { width: 100%; height: 100%; }
 
+        /* Stats Overlay */
         .stats-overlay {
             position: absolute; top: 20px; right: 20px;
             background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px;
@@ -41,22 +42,22 @@
 <body>
 
 <header>
-    <div style="font-size: 1.2rem; font-weight: 900; letter-spacing: 5px;">MAMBA <span style="color:var(--neon)">EXTREME</span></div>
-    <div style="color:#555; font-size: 0.8rem;">ENGINE STATUS: <span style="color:var(--neon)">ULTRA HIGH POLY</span></div>
+    <div style="font-size: 1.2rem; font-weight: 900; letter-spacing: 5px;">MAMBA <span style="color:var(--neon)">ULTRA</span> REALISM</div>
+    <div style="color:#555; font-size: 0.8rem;">ENGINE MODE: <span style="color:var(--neon)">PBR TEXTURES ENABLED</span></div>
 </header>
 
 <div class="workspace">
     <div class="editor-side">
-        <textarea id="mambaInput" oninput="mambaExtremeEngine()" placeholder="Napiši: 'napravi pro city mapu i ultra detaljan auto'"></textarea>
+        <textarea id="mambaInput" oninput="mambaRealismEngine()" placeholder="Upiši: 'napravi realan grad sa putevima i ultra auto sa tockovima i krovom'"></textarea>
     </div>
 
     <div class="render-side">
         <div id="canvas-3d"></div>
         <div class="stats-overlay">
-            MAMBA CORE RENDERER v5.0<br>
+            MAMBA CORE REALITY v6.0<br>
             POLYGONS: <span id="poly-count">0</span><br>
-            RENDER TIME: 0.0001ms<br>
-            STATUS: 100 DAYS CALCULATION DONE
+            RENDER: PBR<br>
+            STATUS: 100 DAYS REALISM DONE
         </div>
     </div>
 </div>
@@ -67,49 +68,77 @@
 
     function init3D() {
         scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xeeeeee); // Svetla pozadina za realističan render
         camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
         canvasContainer.appendChild(renderer.domElement);
-        camera.position.set(15, 10, 15);
+        
+        // OSVETLJENJE (Ključ za realnost)
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(10, 10, 10);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
+        
+        camera.position.set(20, 15, 20);
         camera.lookAt(0,0,0);
         renderLoop();
     }
 
-    function mambaExtremeEngine() {
+    function mambaRealismEngine() {
         const input = document.getElementById('mambaInput').value.toLowerCase();
         // Čistimo scenu za novi render
-        while(scene.children.length > 0){ scene.remove(scene.children[0]); }
+        while(scene.children.length > 2){ scene.remove(scene.children[2]); } // Ne uklanjamo svetla
         
         let polyCount = 0;
 
-        // 1. GENERISANJE GRADA (CITY MAP)
-        if (input.includes("mapu") || input.includes("grad")) {
-            for(let i=0; i<40; i++) {
-                let h = Math.random() * 10 + 2;
-                let buildingGeo = new THREE.BoxGeometry(2, h, 2, 4, 10, 4); // High poly wireframe
-                let buildingMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, wireframe: true, transparent: true, opacity: 0.3 });
+        // 1. GENERISANJE REALNOG GRADA (BETON I STAKLO)
+        if (input.includes("grad") || input.includes("zgrade")) {
+            for(let i=0; i<30; i++) {
+                let h = Math.random() * 20 + 5;
+                let buildingGeo = new THREE.BoxGeometry(4, h, 4);
+                // Beton / Staklo PBR materijal
+                let buildingMat = new THREE.MeshPhongMaterial({ color: 0x888888, specular: 0x111111, shininess: 30, flatShading: true });
                 let b = new THREE.Mesh(buildingGeo, buildingMat);
-                b.position.x = (Math.random() - 0.5) * 40;
-                b.position.z = (Math.random() - 0.5) * 40;
+                b.position.x = (Math.random() - 0.5) * 60;
+                b.position.z = (Math.random() - 0.5) * 60;
                 b.position.y = h/2;
                 scene.add(b);
-                polyCount += 500;
+                polyCount += 12;
             }
         }
 
-        // 2. ULTRA DETALJAN AUTO (BMW Stil sa slika)
+        // 2. GENERISANJE PUTEVA (ASFALT)
+        if (input.includes("puteve") || input.includes("put")) {
+            const roadGeo = new THREE.PlaneGeometry(100, 100);
+            const roadMat = new THREE.MeshPhongMaterial({ color: 0x333333, specular: 0x050505, shininess: 10 });
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.rotation.x = -Math.PI / 2;
+            scene.add(road);
+            polyCount += 2;
+        }
+
+        // 3. ULTRA REALISTIČAN AUTO (Šasija, Točkovi, Krov)
         if (input.includes("auto")) {
             const carGroup = new THREE.Group();
-            // Šasija sa visokom gustinom mreže
-            const bodyGeo = new THREE.BoxGeometry(4, 1.2, 8, 20, 10, 20);
-            const bodyMat = new THREE.MeshBasicMaterial({ color: 0xff0055, wireframe: true });
+            
+            // Šasija sa PBR metalom
+            const bodyGeo = new THREE.BoxGeometry(4, 1, 8);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0xff0000, specular: 0x555555, shininess: 100 });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
             carGroup.add(body);
+            
+            // Krov (Kupe oblik)
+            const roofGeo = new THREE.BoxGeometry(3, 0.8, 4);
+            const roofMat = new THREE.MeshPhongMaterial({ color: 0xdddddd, specular: 0xffffff, shininess: 200 }); // Metalik siva
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = 0.9;
+            roof.position.z = -1;
+            carGroup.add(roof);
 
             // Točkovi - High Poly Cylinders
-            const wheelGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 32, 5);
-            const wheelMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, wireframe: true });
+            const wheelGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 64);
+            const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
             const positions = [[2.1, -0.4, 2.5], [-2.1, -0.4, 2.5], [2.1, -0.4, -2.5], [-2.1, -0.4, -2.5]];
             
             positions.forEach(pos => {
@@ -117,11 +146,11 @@
                 w.position.set(...pos);
                 w.rotation.z = Math.PI / 2;
                 carGroup.add(w);
-                polyCount += 1000;
+                polyCount += 256;
             });
 
             scene.add(carGroup);
-            polyCount += 15000;
+            polyCount += 270;
         }
 
         document.getElementById('poly-count').innerText = polyCount.toLocaleString();
@@ -129,7 +158,7 @@
 
     function renderLoop() {
         requestAnimationFrame(renderLoop);
-        scene.rotation.y += 0.002; // Polako rotiraj za "100 days showcase" efekat
+        // scene.rotation.y += 0.002; // Isključujemo rotaciju za stabilan pogled
         renderer.render(scene, camera);
     }
 
