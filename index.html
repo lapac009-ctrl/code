@@ -2,166 +2,175 @@
 <html lang="sr">
 <head>
     <meta charset="UTF-8">
-    <title>Mamba Ultra | 3D & App Engine</title>
+    <title>Mamba Ultra | Pro Game & App Engine</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        :root { --neon: #00d4ff; --pink: #ff007f; --bg: #05050a; }
+        :root { --neon: #00d4ff; --bg: #030307; --glass: rgba(255,255,255,0.03); }
         body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         header { 
-            background: rgba(255,255,255,0.03); backdrop-filter: blur(15px); 
-            padding: 15px; border-bottom: 1px solid var(--neon);
+            background: var(--glass); backdrop-filter: blur(20px); 
+            padding: 20px; border-bottom: 2px solid var(--neon);
             display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
         }
 
-        .mode-selector { display: flex; gap: 10px; }
-        .mode-btn { 
+        .nav-tabs { display: flex; gap: 15px; }
+        .tab-btn { 
             background: transparent; border: 1px solid var(--neon); color: var(--neon); 
-            padding: 8px 15px; cursor: pointer; border-radius: 5px; font-weight: bold;
+            padding: 10px 20px; cursor: pointer; border-radius: 8px; transition: 0.3s;
         }
-        .mode-btn.active { background: var(--neon); color: black; }
+        .tab-btn.active { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); }
 
-        .workspace { display: flex; flex: 1; overflow: hidden; }
-        .editor-side { flex: 1; border-right: 1px solid #222; display: flex; flex-direction: column; }
-        textarea { flex: 1; background: #000; color: #00ff88; padding: 20px; font-size: 1.1rem; border: none; outline: none; resize: none; font-family: monospace; }
+        .workspace { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; }
+        
+        /* Editor Side */
+        .editor-container { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        textarea { 
+            flex: 1; background: rgba(0,0,0,0.5); color: #00ff88; padding: 20px; 
+            font-size: 1.1rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+            outline: none; resize: none; font-family: 'Consolas', monospace;
+        }
 
-        .preview-side { flex: 1.5; background: #eee; position: relative; display: flex; flex-direction: column; }
-        #render-target { flex: 1; background: #000; } /* Ovde ide 3D ili App */
+        /* Preview Side */
+        .preview-container { flex: 1.5; background: #000; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1); }
+        #output-canvas { width: 100%; height: 100%; }
 
-        .console { height: 150px; background: #111; border-top: 2px solid var(--pink); padding: 10px; font-family: monospace; font-size: 0.9rem; overflow-y: auto; color: #ff007f; }
+        /* Multi-Language Code View */
+        .code-export { 
+            position: absolute; bottom: 0; width: 100%; height: 40%; 
+            background: rgba(0,0,0,0.9); backdrop-filter: blur(10px);
+            border-top: 1px solid var(--neon); padding: 15px; font-size: 0.85rem;
+            overflow-y: auto; color: #aaa; display: none;
+        }
+        .code-export b { color: var(--neon); }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight:bold; letter-spacing:3px;">MAMBA <span style="color:var(--neon)">ULTRA</span> ENGINE v3.0</div>
-    <div class="mode-selector">
-        <button class="mode-btn active" onclick="setMode('3d')">3D WORLD</button>
-        <button class="mode-btn" onclick="setMode('app')">APP FACTORY</button>
+    <div style="font-size: 1.5rem; font-weight: 900;">MAMBA <span style="color:var(--neon)">ULTRA</span> PRO</div>
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="setMode('3d')">3D GAME ENGINE</button>
+        <button class="tab-btn" onclick="setMode('app')">APP FACTORY (C#/JAVA/WEB)</button>
     </div>
 </header>
 
 <div class="workspace">
-    <div class="editor-side">
-        <textarea id="mambaInput" oninput="mambaEngine()" placeholder="3D: napravi crvenu kocku koja se vrti...
-APP: napravi login sistem sa bazom..."></textarea>
-        <div class="console" id="mambaConsole">> Mamba System Ready...</div>
+    <div class="editor-container">
+        <textarea id="mambaInput" oninput="mambaEngine()" placeholder="3D: napravi auto sa 4 tocka i mapu...
+APP: napravi moderan login sa bazom i C# backendom..."></textarea>
     </div>
 
-    <div class="preview-side">
-        <div id="render-target"></div>
+    <div class="preview-container">
+        <div id="output-canvas"></div>
+        <div id="codeExportView" class="code-export"></div>
     </div>
 </div>
 
 <script>
-    let currentMode = '3d';
-    const target = document.getElementById('render-target');
-    const consoleLog = document.getElementById('mambaConsole');
+    let mode = '3d';
+    const canvas = document.getElementById('output-canvas');
+    const codeView = document.getElementById('codeExportView');
 
-    function setMode(mode) {
-        currentMode = mode;
-        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    function setMode(m) {
+        mode = m;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         event.target.classList.add('active');
+        codeView.style.display = (m === 'app') ? 'block' : 'none';
         mambaEngine();
     }
 
-    function log(msg) { consoleLog.innerHTML += `<div>> ${msg}</div>`; consoleLog.scrollTop = consoleLog.scrollHeight; }
-
     function mambaEngine() {
         const input = document.getElementById('mambaInput').value.toLowerCase();
-        target.innerHTML = ""; // Clear previous
+        canvas.innerHTML = "";
         
-        if (currentMode === '3d') {
-            run3DEngine(input);
+        if (mode === '3d') {
+            runPro3D(input);
         } else {
-            runAppEngine(input);
+            runProApp(input);
         }
     }
 
-    // --- 3D ENGINE (THREE.JS) ---
-    function run3DEngine(input) {
+    // --- PRO 3D ENGINE (Cars, Wheels, Maps) ---
+    function runPro3D(input) {
         if (!input.includes("napravi")) return;
-
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, target.clientWidth / target.clientHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(target.clientWidth, target.clientHeight);
-        target.appendChild(renderer.domElement);
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        canvas.appendChild(renderer.domElement);
 
-        let geometry, material, mesh;
-        let color = input.includes("plav") ? 0x00d4ff : (input.includes("zelen") ? 0x00ff88 : 0xff0000);
-
-        if (input.includes("kocku") || input.includes("kvadrat")) {
-            geometry = new THREE.BoxGeometry();
-        } else if (input.includes("loptu") || input.includes("krug")) {
-            geometry = new THREE.SphereGeometry(1, 32, 32);
+        // MAPA / POD
+        if (input.includes("mapu")) {
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            const floorMat = new THREE.MeshBasicMaterial({ color: 0x111111, wireframe: true });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = Math.PI / 2;
+            scene.add(floor);
         }
 
-        material = new THREE.MeshBasicMaterial({ color: color, wireframe: input.includes("wireframe") });
-        mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-        camera.position.z = 5;
+        // AUTO KONSTRUKCIJA
+        if (input.includes("auto")) {
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 4), new THREE.MeshBasicMaterial({color: 0xff0000}));
+            scene.add(body);
+            
+            // Točkovi
+            const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 32);
+            const wheelMat = new THREE.MeshBasicMaterial({color: 0x444444});
+            const positions = [[1.1, -0.3, 1.5], [-1.1, -0.3, 1.5], [1.1, -0.3, -1.5], [-1.1, -0.3, -1.5]];
+            
+            positions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.position.set(...pos);
+                wheel.rotation.z = Math.PI / 2;
+                scene.add(wheel);
+            });
+            body.position.y = 0.5;
+        }
 
-        function animate() {
-            requestAnimationFrame(animate);
-            if(input.includes("vrti")) {
-                mesh.rotation.x += 0.01;
-                mesh.rotation.y += 0.01;
-            }
+        camera.position.set(5, 5, 10);
+        camera.lookAt(0,0,0);
+
+        function anim() {
+            requestAnimationFrame(anim);
             renderer.render(scene, camera);
         }
-        animate();
-        log("3D Objekt generisan sa ultra-brzim renderom.");
+        anim();
     }
 
-    // --- APP ENGINE (DATABASE & UI) ---
-    function runAppAppEngine(input) {
-        let appHTML = `<div style="padding:40px; color:black; font-family:sans-serif;">`;
-        
-        if (input.includes("login") || input.includes("bazu")) {
-            appHTML += `
-                <h2>Mamba Secure Database Login</h2>
-                <input id="u" placeholder="Username" style="display:block; margin:10px 0; padding:10px;">
-                <input id="p" type="password" placeholder="Password" style="display:block; margin:10px 0; padding:10px;">
-                <button onclick="saveUser()" style="padding:10px; background:#00d4ff; border:none; cursor:pointer;">REGISTRUJ U BAZU</button>
-                <button onclick="checkUser()" style="padding:10px; background:#00ff88; border:none; cursor:pointer;">LOGUJ SE</button>
-                <div id="status"></div>
-                <script>
-                    function saveUser() {
-                        const u = document.getElementById('u').value;
-                        const p = document.getElementById('p').value;
-                        localStorage.setItem('mamba_user_' + u, p);
-                        alert('Korisnik ' + u + ' je sacuvan u Mamba LocalDB!');
-                    }
-                    function checkUser() {
-                        const u = document.getElementById('u').value;
-                        const p = document.getElementById('p').value;
-                        if(localStorage.getItem('mamba_user_' + u) === p) {
-                            document.getElementById('status').innerHTML = '<h3 style="color:green">USPESAN LOGIN! Dobrodosli u Mamba Sistem.</h3>';
-                        } else {
-                            alert('Greska: Korisnik ne postoji ili je lozinka pogresna.');
-                        }
-                    }
-                <\/script>
+    // --- PRO APP FACTORY (Multi-Language Export) ---
+    function runProApp(input) {
+        let htmlPreview = `<div style="padding:20px; background:#111; height:100%; color:white; font-family:sans-serif;">`;
+        let exportedCode = "";
+
+        if (input.includes("login")) {
+            htmlPreview += `
+                <div style="background:rgba(255,255,255,0.05); padding:30px; border-radius:15px; border:1px solid #00d4ff; max-width:300px; margin:auto;">
+                    <h2 style="color:#00d4ff">MAMBA LOGIN</h2>
+                    <input type="text" placeholder="User" style="width:100%; margin:10px 0; padding:10px; background:#222; border:1px solid #333; color:white;">
+                    <button style="width:100%; padding:10px; background:#00d4ff; border:none; font-weight:bold; cursor:pointer;">CONNECT</button>
+                </div>`;
+
+            exportedCode = `
+<b>// C# BACKEND (MambaCore.cs)</b>
+public class DatabaseConnector {
+    public void Connect() { Console.WriteLine("Mamba DB Connected!"); }
+}
+
+<b>// JAVA MOBILE (Main.java)</b>
+public class MambaApp {
+    public static void main(String[] args) { System.out.println("App Started"); }
+}
+
+<b>// HTML/CSS (UI.html)</b>
+&lt;button class="neon-btn"&gt;Mamba Login&lt;/button&gt;
             `;
-        } else if (input.includes("discord") || input.includes("chat")) {
-            appHTML += `<h3>Mamba Chat Mockup</h3><div style="background:#2f3136; color:white; padding:10px; height:200px; border-radius:10px;">Ovo je Discord Style UI...</div>`;
-        } else {
-            appHTML += `<h1>Napiši npr: 'Napravi login sa bazom'</h1>`;
         }
 
-        appHTML += `</div>`;
-        target.innerHTML = appHTML;
-        
-        // Moramo ponovo pokrenuti skripte unutar targeta jer innerHTML ne pokreće <script> automatski
-        const scripts = target.getElementsByTagName('script');
-        for (let s of scripts) { eval(s.innerText); }
-        
-        log("Aplikacija sa bazom podataka je spremna.");
+        canvas.innerHTML = htmlPreview + "</div>";
+        codeView.innerHTML = exportedCode;
     }
-    
-    // Malo popravljamo ime funkcije za poziv
-    window.runAppEngine = runAppAppEngine;
 </script>
 
 </body>
